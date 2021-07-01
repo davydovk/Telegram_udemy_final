@@ -1,2 +1,8 @@
-aiogram~=2.12
+asyncio
+aiogram>=2.11.2,<3.0
 environs~=8.0.0
+python-dotenv
+asyncpg
+sqlalchemy
+gino
+emoji

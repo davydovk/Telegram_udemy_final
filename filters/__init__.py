@@ -1,3 +1,4 @@
+from .forwarded_message import IsForwarded
 from aiogram import Dispatcher
 
 from loader import dp
