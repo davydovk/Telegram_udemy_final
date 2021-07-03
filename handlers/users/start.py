@@ -3,11 +3,13 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.builtin import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from loader import dp
+from loader import dp, bot
 from states.admin import Invite
-from data.config import INVITE_CODES
+from data.config import INVITE_CODES, CHANNELS
+from utils import photo_link
 from utils.db_api import db_commands
 from keyboards.inline.keyboards import keyboard_success_code, keyboard_start_deep_link, keyboard_subscribe
+from utils.misc import subscription
 
 db = db_commands.DBCommands()
 
@@ -72,3 +74,21 @@ async def subscribe_channel(call: types.CallbackQuery):
     await call.message.answer('Чтобы получить реферальную ссылку, '
                               'необходимо подписаться на канал @udemy_final_project',
                               reply_markup=keyboard_subscribe)
+
+
+@dp.callback_query_handler(text='check_subs')
+async def checker(call: types.CallbackQuery):
+    await call.answer(cache_time=60)
+    result = str()
+    for channel in CHANNELS:
+        status = await subscription.check(user_id=call.from_user.id,
+                                          channel=channel)
+        channel = await bot.get_chat(channel)
+        if status:
+            result += f'Подписка на канал <b>{channel.title}</b> оформлена!\n\n'
+        else:
+            invite_link = await channel.export_invite_link()
+            result += (f'Подписка на канал <b>{channel.title}</b> не оформлена! '
+                       f'<a href="{invite_link}">Нужно подписаться.</a>\n\n')
+
+    await call.message.answer(result, disable_web_page_preview=True)

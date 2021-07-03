@@ -25,6 +25,7 @@ channel_link = 'https://t.me/udemy_final_project'
 keyboard_subscribe = InlineKeyboardMarkup(row_width=1)
 
 subscribe_btn = InlineKeyboardButton(text='Подписаться на канал', url=channel_link)
+check_sub_btn = InlineKeyboardButton(text='Проверить подписку', callback_data='check_subs')
 cancel_btn_btn = InlineKeyboardButton(text='Отмена', callback_data='cancel')
 
-keyboard_subscribe.add(subscribe_btn, cancel_btn_btn)
+keyboard_subscribe.add(subscribe_btn, check_sub_btn, cancel_btn_btn)

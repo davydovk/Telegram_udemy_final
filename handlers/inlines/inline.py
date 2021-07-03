@@ -28,7 +28,7 @@ async def empty_query(query: types.InlineQuery):
     articles = [types.InlineQueryResultArticle(
         id=item.id,
         title=item.name,
-        description=f'Цена: {item.price} RUB',
+        description='Цена: {price:,} RUB'.format(price=item.price / 100),
         input_message_content=types.InputTextMessageContent(
             message_text=item.description,
             parse_mode='HTML'

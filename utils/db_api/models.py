@@ -29,7 +29,7 @@ class Item(db.Model):
     name = Column(String(50))
     description = Column(String(4096))
     photo = Column(String(250))
-    price = Column(Integer)  # Цена в копейках (потом делим на 100)
+    price = Column(BigInteger)  # Цена в копейках (потом делим на 100)
 
     def __repr__(self):
         return "<Item(id='{}', name='{}', description='{}', photo='{}', price='{}')>".format(

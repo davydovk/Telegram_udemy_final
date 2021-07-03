@@ -29,11 +29,11 @@ WALLET_QIWI = env.str("wallet")
 QIWI_PUBKEY = env.str("qiwi_p_pub")
 
 CHANNELS = [
-    '-1001547355516'
+    '-1001547355516',
 ]
 
 ALLOWED_USERS = [
-    # '1027394288'
+    # '1027394288',
 ]
 
 INVITE_CODES = [
