@@ -104,6 +104,15 @@ class DBCommands:
         else:
             return False
 
+    async def edit_name_item(self, item_id, name):
+        item = await Item.query.where(Item.id == item_id).gino.first()
+        await item.update(name=name).apply()
+
+    async def get_item(self, item_id):
+        item = await Item.query.where(Item.id == int(item_id)).gino.first()
+
+        return item
+
 
 # Функция для создания нового товара в базе данных. Принимает все возможные аргументы, прописанные в Item
 async def add_item(**kwargs):

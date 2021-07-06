@@ -9,6 +9,14 @@ class NewItem(StatesGroup):
     Confirm = State()
 
 
+class EditItem(StatesGroup):
+    EditItem = State()
+    EditName = State()
+    EditDesc = State()
+    EditPhoto = State()
+    EditPrice = State()
+
+
 class Mailing(StatesGroup):
     Text = State()
     Language = State()
@@ -16,3 +24,12 @@ class Mailing(StatesGroup):
 
 class Invite(StatesGroup):
     Code = State()
+
+
+class Purchase(StatesGroup):
+    Quantity = State()
+    Shipping_address = State()
+    Buying = State()
+    Send_Invoice = State()
+    Payment = State()
+    Payment_qiwi = State()
