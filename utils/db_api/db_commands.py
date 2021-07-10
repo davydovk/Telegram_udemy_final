@@ -66,7 +66,9 @@ class DBCommands:
 
     async def check_balance(self):
         user_id = types.User.get_current().id
-        balance = await User.select('balance').where(User.id == int(user_id)).gino.scalar()
+        user = await User.query.where(User.user_id == int(user_id)).gino.first()
+        balance = user.balance
+        # balance = await User.select('balance').where(User.id == int(user_id)).gino.scalar()
 
         return balance
 

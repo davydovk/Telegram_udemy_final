@@ -1,4 +1,5 @@
 import datetime
+import re
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
@@ -19,7 +20,8 @@ db = db_commands.DBCommands()
 buy_item = CallbackData('buy', 'item_id')
 
 
-@dp.message_handler(CommandStart(deep_link='10'))
+# Ловим item_id в deep_link с помощью регулярного выражения
+@dp.message_handler(CommandStart(deep_link=re.compile(r'(\d+)')))
 async def connect_user(message: types.Message, state: FSMContext):
     args = message.get_args()
     item: models.Item = await db.get_item(int(args))
@@ -174,6 +176,20 @@ async def cancel_command(call: types.CallbackQuery, state: FSMContext):
     await call.answer(cache_time=60)
     await call.message.edit_reply_markup()
     await state.reset_state()
+
+
+@dp.callback_query_handler(text='balance')
+async def check_balance(call: types.CallbackQuery):
+    await call.answer(cache_time=60)
+    balance = await db.check_balance()
+    await call.message.answer(f'Ваш баланс: {balance} $')
+
+
+@dp.callback_query_handler(text='referrals')
+async def check_balance(call: types.CallbackQuery):
+    await call.answer(cache_time=60)
+    referrals = await db.check_referrals()
+    await call.message.answer(f'Ваши рефералы: {referrals}')
 
 
 @dp.callback_query_handler(text='channel')

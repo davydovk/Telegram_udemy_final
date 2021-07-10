@@ -7,9 +7,11 @@ from emoji import emojize
 keyboard_success_code = InlineKeyboardMarkup(row_width=1)
 
 items_btn = InlineKeyboardButton(text='Товары', switch_inline_query_current_chat='')
+balance_btn = InlineKeyboardButton(text='Проверить баланс', callback_data='balance')
+referral_btn = InlineKeyboardButton(text='Показать рефералов', callback_data='referrals')
 cancel_btn = InlineKeyboardButton(text='Отмена', callback_data='cancel')
 
-keyboard_success_code.add(items_btn, cancel_btn)
+keyboard_success_code.add(items_btn, balance_btn, referral_btn, cancel_btn)
 
 
 # Клавиатура при старте через deep_link

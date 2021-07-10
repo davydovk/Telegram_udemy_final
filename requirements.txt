@@ -6,3 +6,5 @@ asyncpg
 sqlalchemy
 gino
 emoji
+py3dns
+validate_email
