@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.markdown import hlink, hcode
 
-from keyboards.inline.keyboards import paid_keyboard
+from keyboards.inline.keyboards import paid_qiwi_keyboard
 from loader import dp, bot
 from states.admin import Purchase
 from utils.db_api import db_commands, models
@@ -35,17 +35,17 @@ async def create_invoice(call: CallbackQuery, state: FSMContext):
             "ID платежа:",
             hcode(payment.id)
         ]),
-        reply_markup=paid_keyboard)
+        reply_markup=paid_qiwi_keyboard)
 
-    await state.set_state(Purchase.Payment_qiwi)
+    await state.set_state(Purchase.Payment_QIWI)
     await state.update_data(payment=payment)
 
-    @dp.callback_query_handler(text="cancel", state=Purchase.Payment_qiwi)
+    @dp.callback_query_handler(text="cancel", state=Purchase.Payment_QIWI)
     async def cancel_payment(call: types.CallbackQuery, state: FSMContext):
         await call.message.edit_text("Отменено")
         await state.finish()
 
-    @dp.callback_query_handler(text="paid", state=Purchase.Payment_qiwi)
+    @dp.callback_query_handler(text="paid", state=Purchase.Payment_QIWI)
     async def approve_payment(call: types.CallbackQuery, state: FSMContext):
 
         data = await state.get_data()
@@ -73,11 +73,6 @@ async def create_invoice(call: CallbackQuery, state: FSMContext):
             await purchase.update(
                 successful=True
             ).apply()
-
-        await bot.send_message('-514737872',
-                               f'Оплата по заказу <b>{order_number}</b> прошла успешно.\n'
-                               f'\nСтоимость покупки = <b>{item_amount} RUB</b>',
-                               parse_mode='html')  # Отправляем сообщение с запросом в группу
 
         await call.message.edit_reply_markup()
         await state.finish()

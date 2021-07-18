@@ -32,4 +32,5 @@ class Purchase(StatesGroup):
     Buying = State()
     Send_Invoice = State()
     Payment = State()
-    Payment_qiwi = State()
+    Payment_QIWI = State()
+    Payment_BTC = State()

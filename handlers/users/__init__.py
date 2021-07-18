@@ -5,4 +5,4 @@ from . import payment_sberbank
 from . import payment_qiwi
 from . import payment_bitcoin
 from . import items
-from . import echo
+# from . import echo
