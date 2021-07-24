@@ -13,6 +13,9 @@ class User(db.Model):
     username = Column(String(50))
     balance = Column(Integer, default=0)
     referral = Column(Integer)
+    ref_link = Column(Boolean, default=False)
+    invite_code = Column(Boolean, default=False)
+    sub_channel = Column(Boolean, default=False)
     allow = Column(Boolean, default=False)
     query: sql.Select
 
@@ -43,7 +46,7 @@ class Purchase(db.Model):
     id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
     buyer = Column(BigInteger)
     item_id = Column(Integer)
-    amount = Column(Integer)  # Цена в копейках (потом делим на 100)
+    amount = Column(BigInteger)  # Цена в копейках (потом делим на 100)
     quantity = Column(Integer)
     purchase_time = Column(TIMESTAMP)
     shipping_address = Column(JSON)

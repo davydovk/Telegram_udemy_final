@@ -3,22 +3,16 @@ from random import randint
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import CallbackQuery
-from aiogram.utils.callback_data import CallbackData
-from aiogram.utils.markdown import hlink, hcode
+from aiogram.utils.markdown import hcode
 from blockcypher import from_satoshis
 
 from data import config
 from keyboards.inline.keyboards import paid_btc_keyboard
-from loader import dp, bot
+from loader import dp
 from states.admin import Purchase
-from utils.db_api import db_commands, models
+from utils.db_api import models
 from utils.misc.bitcoin_payments import NotConfirmed, NoPaymentFound, Payment
 from utils.misc.qr_code import qr_link
-
-db = db_commands.DBCommands()
-
-# Используем CallbackData для работы с коллбеками, в данном случае для работы с покупкой товаров
-buy_item = CallbackData('buy', 'item_id')
 
 
 @dp.callback_query_handler(text='bitcoin', state=Purchase.Send_Invoice)
@@ -60,9 +54,11 @@ async def approve_payment(call: types.CallbackQuery, state: FSMContext):
     try:
         payment.check_payment()
     except NotConfirmed:
+        await call.answer(cache_time=5)
         await call.message.answer('Транзакция найдена. Но еще не подтверждена. Попробуйте позже')
         return
     except NoPaymentFound:
+        await call.answer(cache_time=5)
         await call.message.answer('Транзакция не найдена.')
         return
     else:

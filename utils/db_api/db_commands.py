@@ -95,8 +95,26 @@ class DBCommands:
     async def set_allow(self):
         user_id = types.User.get_current().id
         user = await User.query.where(User.user_id == user_id).gino.first()
-        allow = user.allow
+
         await user.update(allow=True).apply()
+
+    async def set_ref_link(self):
+        user_id = types.User.get_current().id
+        user = await User.query.where(User.user_id == user_id).gino.first()
+
+        await user.update(ref_link=True).apply()
+
+    async def set_invite_code(self):
+        user_id = types.User.get_current().id
+        user = await User.query.where(User.user_id == user_id).gino.first()
+
+        await user.update(invite_code=True).apply()
+
+    async def set_sub_channel(self):
+        user_id = types.User.get_current().id
+        user = await User.query.where(User.user_id == user_id).gino.first()
+
+        await user.update(sub_channel=True).apply()
 
     async def check_user(self):
         user_id = types.User.get_current().id

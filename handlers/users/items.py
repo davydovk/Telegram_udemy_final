@@ -3,14 +3,10 @@ import asyncio
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.utils.callback_data import CallbackData
 
+from handlers.users.start import db
+from keyboards.inline.callbackdata_factory import buy_item, set_item
 from loader import dp, bot
 from utils.db_api import database, db_commands, models
-
-db = db_commands.DBCommands()
-
-# Используем CallbackData для работы с коллбеками, в данном случае для работы с покупкой товаров
-buy_item = CallbackData('buy', 'item_id')
-desc_item = CallbackData('desc', 'item_id')
 
 
 @dp.message_handler(commands=['items'])
@@ -28,7 +24,7 @@ async def show_items(message: Message):
             inline_keyboard=
             [
                 [
-                    InlineKeyboardButton(text="Описание", callback_data=desc_item.new(item_id=item.id))
+                    InlineKeyboardButton(text="Описание", callback_data=set_item.new(item_id=item.id))
                 ],
                 [
                     # Создаем кнопку "купить" и передаем ее айдишник в функцию создания коллбека
@@ -46,7 +42,7 @@ async def show_items(message: Message):
         await asyncio.sleep(0.3)
 
 
-@dp.callback_query_handler(desc_item.filter())
+@dp.callback_query_handler(set_item.filter())
 async def get_description(call: CallbackQuery, callback_data: dict):
     await call.answer(cache_time=60)
     item_id = callback_data.get('item_id')

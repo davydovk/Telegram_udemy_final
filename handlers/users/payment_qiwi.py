@@ -4,16 +4,12 @@ from aiogram.types import CallbackQuery
 from aiogram.utils.callback_data import CallbackData
 from aiogram.utils.markdown import hlink, hcode
 
+from handlers.users.start import db
 from keyboards.inline.keyboards import paid_qiwi_keyboard
 from loader import dp, bot
 from states.admin import Purchase
 from utils.db_api import db_commands, models
 from utils.misc.qiwi import Payment, NoPaymentFound, NotEnoughMoney
-
-db = db_commands.DBCommands()
-
-# Используем CallbackData для работы с коллбеками, в данном случае для работы с покупкой товаров
-buy_item = CallbackData("buy", "item_id")
 
 
 @dp.callback_query_handler(text='qiwi', state=Purchase.Send_Invoice)
@@ -40,39 +36,42 @@ async def create_invoice(call: CallbackQuery, state: FSMContext):
     await state.set_state(Purchase.Payment_QIWI)
     await state.update_data(payment=payment)
 
-    @dp.callback_query_handler(text="cancel", state=Purchase.Payment_QIWI)
-    async def cancel_payment(call: types.CallbackQuery, state: FSMContext):
-        await call.message.edit_text("Отменено")
-        await state.finish()
 
-    @dp.callback_query_handler(text="paid", state=Purchase.Payment_QIWI)
-    async def approve_payment(call: types.CallbackQuery, state: FSMContext):
+@dp.callback_query_handler(text="cancel", state=Purchase.Payment_QIWI)
+async def cancel_payment(call: types.CallbackQuery, state: FSMContext):
+    await call.message.edit_text("Отменено")
+    await state.finish()
 
-        data = await state.get_data()
-        item: models.Item = data.get('item')
-        purchase: models.Purchase = data.get('purchase')
 
-        item_amount = item.price // 100
+@dp.callback_query_handler(text="paid", state=Purchase.Payment_QIWI)
+async def approve_payment(call: types.CallbackQuery, state: FSMContext):
 
-        payment: Payment = data.get("payment")
+    data = await state.get_data()
+    item: models.Item = data.get('item')
+    purchase: models.Purchase = data.get('purchase')
 
-        user_id = call.from_user.id
-        user = await db.get_user(user_id)
+    item_amount = item.price // 100
 
-        try:
-            payment.check_payment()
-        except NoPaymentFound:
-            await call.message.answer("Транзакция не найдена.")
-            return
-        except NotEnoughMoney:
-            await call.message.answer("Оплаченная сума меньше необходимой.")
-            return
+    payment: Payment = data.get("payment")
 
-        else:
-            await call.message.answer("Успешно оплачено")
-            await purchase.update(
-                successful=True
-            ).apply()
+    user_id = call.from_user.id
+    user = await db.get_user(user_id)
 
-        await call.message.edit_reply_markup()
-        await state.finish()
+    try:
+        payment.check_payment()
+    except NoPaymentFound:
+        await call.answer(cache_time=5)
+        await call.message.answer("Транзакция не найдена.")
+        return
+    except NotEnoughMoney:
+        await call.message.answer("Оплаченная сума меньше необходимой.")
+        return
+
+    else:
+        await call.message.answer("Успешно оплачено")
+        await purchase.update(
+            successful=True
+        ).apply()
+
+    await call.message.edit_reply_markup()
+    await state.finish()

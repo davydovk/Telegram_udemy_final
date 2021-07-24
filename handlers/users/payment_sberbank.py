@@ -1,15 +1,11 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice, ContentType
-from aiogram.utils.callback_data import CallbackData
-from emoji import emojize
+from aiogram.types import Message, CallbackQuery, LabeledPrice, ContentType
 
 from data.config import PAYMENT_TOKEN
 from loader import dp, bot
 from states.admin import Purchase
-from utils.db_api import db_commands, models
-
-db = db_commands.DBCommands()
+from utils.db_api import models
 
 
 @dp.callback_query_handler(text='sberbank', state=Purchase.Send_Invoice)
@@ -19,7 +15,7 @@ async def payment(call: CallbackQuery, state: FSMContext):
     purchase: models.Purchase = data.get('purchase')
     item: models.Item = data.get('item')
 
-    currency = "RUB"
+    currency = 'RUB'
     need_name = True
     need_phone_number = False
     need_email = True
@@ -32,7 +28,7 @@ async def payment(call: CallbackQuery, state: FSMContext):
                            start_parameter=str(purchase.id),
                            currency=currency,
                            prices=[
-                               LabeledPrice(label=item.name, amount=item.price * purchase.quantity)
+                               LabeledPrice(label=item.name, amount=purchase.amount)
                            ],
                            provider_token=PAYMENT_TOKEN,
                            need_name=need_name,
