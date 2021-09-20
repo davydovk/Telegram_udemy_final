@@ -6,17 +6,19 @@ from asyncio import sleep
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from data.config import ADMINS
-from handlers.users.start import db
-from keyboards.inline.callbackdata_factory import set_item
-from keyboards.inline.keyboards import keyboard_admin, text_language_keyboard
+from keyboards.inline.callbackdata_factory import edit_item
+from keyboards.inline.keyboards import keyboard_admin, keyboard_set_items, text_language_keyboard, \
+    keyboard_set_items_confirm
 from loader import dp, bot
-from states.admin import NewItem, Mailing
+from states.admin import NewItem, Mailing, EditItem
 from utils import photo_link
-from utils.db_api import models
+from utils.db_api import db_commands, models
 from utils.db_api.models import Item, User
+
+db = db_commands.DBCommands()
 
 
 @dp.message_handler(CommandStart(deep_link=re.compile(r'i(\d+)')), user_id=ADMINS)
@@ -43,13 +45,14 @@ async def connect_user(message: types.Message, state: FSMContext):
             [
                 InlineKeyboardButton(
                     text='Изменить',
-                    callback_data=set_item.new(item_id=item.id)
+                    callback_data=edit_item.new(item_id=item.id, action='edit')
                 )
             ]
         ]
     ))
 
 
+# Когда команду /start нажимает Администратор
 @dp.message_handler(user_id=ADMINS, commands=['start'])
 async def start_admin(message: types.Message):
     await message.answer('Аве, Администратор! Что желаете?', reply_markup=keyboard_admin)
@@ -61,6 +64,7 @@ async def cancel(message: types.Message, state: FSMContext):
     await state.reset_state()
 
 
+# Создание товара
 @dp.callback_query_handler(user_id=ADMINS, text='add_item')
 async def add_item(call: types.CallbackQuery):
     await call.answer(cache_time=60)
@@ -157,13 +161,276 @@ async def enter_price(call: types.CallbackQuery, state: FSMContext):
     await call.message.answer(f'Товар удачно создан.\n\n'
                               f'Название: <b>{item.name}</b>\n\n'
                               f'Описание: <i>{item.description}</i>\n\n'
-                              f'Цена: <b>{item.price} RUB</b>\n\n'
+                              f'Цена: <b>{item.price / 100} RUB</b>\n\n'
                               f'Фотография: {item.photo}\n\n'
                               f'Если хотите вернуться в меню администратора, нажмите /start')
     await state.reset_state()
 
 
-# Фича для рассылки по юзерам (учитывая их язык)
+# Изменение товара
+@dp.callback_query_handler(edit_item.filter(action='edit'), user_id=ADMINS)
+async def set_item(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.answer(cache_time=60)
+    item_id = int(callback_data.get('item_id'))
+    data = await state.get_data()
+    await state.update_data(item_id=item_id)
+
+    await call.message.answer('Что хотите изменить?', reply_markup=keyboard_set_items)
+
+
+# Изменение названия товара
+@dp.callback_query_handler(edit_item.filter(action='edit_name'), user_id=ADMINS)
+async def edit_item_name(call: CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    item_id = int(data.get('item_id'))
+    await call.message.answer('Вы хотите изменить название товара!')
+    item = Item.get(item_id)
+
+    if not item:
+        await call.message.answer('Такого товара не существует')
+        return
+    # await db.edit_name_item(item_id, 'new name')
+    await call.message.answer('Введите новое название товара.')
+    await call.message.edit_reply_markup()
+    await EditItem.EditName.set()
+
+
+@dp.message_handler(user_id=ADMINS, state=EditItem.EditName)
+async def enter_new_name(message: types.Message, state: FSMContext):
+    new_item_name = message.text
+    data = await state.get_data()
+    item = data.get('item')
+    text = f'Старое название: <b>{item.name}</b>\n' \
+           f'Новое название: <b>{new_item_name}</b>\n' \
+           f'Подтверждаете изменение?'
+    await state.update_data(new_item_name=new_item_name)
+    await message.answer(text, reply_markup=keyboard_set_items_confirm)
+
+
+@dp.callback_query_handler(text='confirm_set', user_id=ADMINS, state=EditItem.EditName)
+async def edit_name(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    new_item_name = data.get('new_item_name')
+    item = data.get('item')
+    text = f'Название товара успешно изменено!\n' \
+           f'Новое название товара: <b>{new_item_name}</b>'
+    await item.update(name=new_item_name).apply()
+    await call.message.answer(text)
+
+    await state.reset_state()
+
+
+@dp.callback_query_handler(text='cancel_set', user_id=ADMINS, state=EditItem.EditName)
+async def cancel_edit_name(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    await call.message.answer('Вы отменили изменение товара')
+
+    await state.reset_state()
+
+
+# Изменение описания товара
+@dp.callback_query_handler(edit_item.filter(action='edit_desc'), user_id=ADMINS)
+async def edit_item_desc(call: CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    item_id = int(data.get('item_id'))
+    await call.message.answer('Вы хотите изменить описание товара!')
+    item = Item.get(item_id)
+
+    if not item:
+        await call.message.answer('Такого товара не существует')
+        return
+    # await db.edit_name_item(item_id, 'new name')
+    await call.message.answer('Введите новое описание товара.')
+    await call.message.edit_reply_markup()
+    await EditItem.EditDesc.set()
+
+
+@dp.message_handler(user_id=ADMINS, state=EditItem.EditDesc)
+async def enter_new_desc(message: types.Message, state: FSMContext):
+    new_item_desc = message.text
+    data = await state.get_data()
+    item = data.get('item')
+    text = f'Старое описание: <b>{item.description}</b>\n' \
+           f'Новое описание: <b>{new_item_desc}</b>\n' \
+           f'Подтверждаете изменение?'
+    await state.update_data(new_item_desc=new_item_desc)
+    await message.answer(text, reply_markup=keyboard_set_items_confirm)
+
+
+@dp.callback_query_handler(text='confirm_set', user_id=ADMINS, state=EditItem.EditDesc)
+async def edit_desc(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    new_item_desc = data.get('new_item_desc')
+    item = data.get('item')
+    text = f'Описание товара успешно изменено!\n' \
+           f'Новое описание товара: <b>{new_item_desc}</b>'
+    await item.update(description=new_item_desc).apply()
+    await call.message.answer(text)
+
+    await state.reset_state()
+
+
+@dp.callback_query_handler(text='cancel_set', user_id=ADMINS, state=EditItem.EditDesc)
+async def cancel_edit_desc(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    await call.message.answer('Вы отменили изменение товара')
+
+    await state.reset_state()
+
+
+# Изменение цены товара
+@dp.callback_query_handler(edit_item.filter(action='edit_price'), user_id=ADMINS)
+async def edit_item_price(call: CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    item_id = int(data.get('item_id'))
+    await call.message.answer('Вы хотите изменить цену товара!')
+    item = Item.get(item_id)
+
+    if not item:
+        await call.message.answer('Такого товара не существует')
+        return
+    # await db.edit_name_item(item_id, 'new name')
+    await call.message.answer('Введите новую цену товара в копейках.')
+    await call.message.edit_reply_markup()
+    await EditItem.EditPrice.set()
+
+
+@dp.message_handler(user_id=ADMINS, state=EditItem.EditPrice)
+async def enter_new_price(message: types.Message, state: FSMContext):
+    try:
+        new_item_price = int(message.text)
+    except ValueError:
+        await message.answer('Неверное значение, введите число')
+        return
+
+    data = await state.get_data()
+    item = data.get('item')
+    text = f'Старая цена: <b>{item.price / 100}</b> RUB\n' \
+           f'Новая цена: <b>{new_item_price / 100}</b> RUB\n' \
+           f'Подтверждаете изменение?'
+    await state.update_data(new_item_price=new_item_price)
+    await message.answer(text, reply_markup=keyboard_set_items_confirm)
+
+
+@dp.callback_query_handler(text='confirm_set', user_id=ADMINS, state=EditItem.EditPrice)
+async def edit_price(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    new_item_price = data.get('new_item_price')
+    item = data.get('item')
+    text = f'Цена товара успешно изменена!\n' \
+           f'Новая цена товара: <b>{new_item_price / 100}</b> RUB'
+    await item.update(price=new_item_price).apply()
+    await call.message.answer(text)
+
+    await state.reset_state()
+
+
+@dp.callback_query_handler(text='cancel_set', user_id=ADMINS, state=EditItem.EditPrice)
+async def cancel_edit_price(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    await call.message.answer('Вы отменили изменение товара')
+
+    await state.reset_state()
+
+
+# Изменение фотографии товара
+@dp.callback_query_handler(edit_item.filter(action='edit_photo'), user_id=ADMINS)
+async def edit_item_photo(call: CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    item_id = int(data.get('item_id'))
+    await call.message.answer('Вы хотите изменить фотографию товара!')
+    item = Item.get(item_id)
+
+    if not item:
+        await call.message.answer('Такого товара не существует')
+        return
+    # await db.edit_name_item(item_id, 'new name')
+    await call.message.answer('Пришлите мне фотографию товара (не документ)')
+    await call.message.edit_reply_markup()
+    await EditItem.EditPhoto.set()
+
+
+@dp.message_handler(user_id=ADMINS, state=EditItem.EditPhoto, content_types=types.ContentType.PHOTO)
+async def enter_new_photo(message: types.Message, state: FSMContext):
+    new_photo = message.photo[-1]
+    new_photo_link = await photo_link(new_photo)
+    await message.bot.send_chat_action(message.chat.id, 'upload_photo')
+
+    data = await state.get_data()
+    item = data.get('item')
+    text = f'Старая фотография: <b>{item.photo}</b>\n' \
+           f'Новая фотография: <b>{new_photo_link}</b>\n' \
+           f'Подтверждаете изменение?'
+    await state.update_data(new_photo_link=new_photo_link)
+    await message.answer(text, reply_markup=keyboard_set_items_confirm)
+
+
+@dp.callback_query_handler(text='confirm_set', user_id=ADMINS, state=EditItem.EditPhoto)
+async def edit_photo(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    new_photo_link = data.get('new_photo_link')
+    item = data.get('item')
+    text = f'Фотография товара успешно изменена!\n' \
+           f'Новая фотография товара: <b>{new_photo_link}</b>'
+    await item.update(photo=new_photo_link).apply()
+    await call.message.answer(text)
+
+    await state.reset_state()
+
+
+@dp.callback_query_handler(text='cancel_set', user_id=ADMINS, state=EditItem.EditPhoto)
+async def cancel_edit_photo(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    await call.message.answer('Вы отменили изменение товара')
+
+    await state.reset_state()
+
+
+# Удаление товара
+@dp.callback_query_handler(edit_item.filter(action='delete_item'), user_id=ADMINS)
+async def delete_item(call: CallbackQuery, callback_data: dict, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    item_id = int(data.get('item_id'))
+    item = Item.get(item_id)
+
+    if not item:
+        await call.message.answer('Такого товара не существует')
+        return
+
+    await call.message.answer('Вы подтверждаете удаление товара?', reply_markup=keyboard_set_items_confirm)
+    await EditItem.Delete.set()
+
+
+@dp.callback_query_handler(text='confirm_set', user_id=ADMINS, state=EditItem.Delete)
+async def confirm_delete_item(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    data = await state.get_data()
+    item = data.get('item')
+    text = f'Товар <b>{item.name}</b> успешно удален!'
+    await item.delete()
+    await call.message.answer(text)
+
+    await state.reset_state()
+
+
+@dp.callback_query_handler(text='cancel_set', user_id=ADMINS, state=EditItem.Delete)
+async def cancel_delete_item(call: types.CallbackQuery, state: FSMContext):
+    await call.answer(cache_time=60)
+    await call.message.answer('Вы отменили удаление товара')
+
+    await state.reset_state()
+
+
+# Создание рассылки по юзерам (учитывая их язык)
 @dp.callback_query_handler(user_id=ADMINS, text='tell_everyone')
 async def mailing(call: types.CallbackQuery):
     await call.answer(cache_time=60)
@@ -199,128 +466,7 @@ async def mailing_start(call: types.CallbackQuery, state: FSMContext):
             await bot.send_message(chat_id=user.user_id,
                                    text=text)
             await sleep(0.3)
+
         except Exception:
             pass
     await call.message.answer('Рассылка выполнена.')
-
-
-'''------------------------------------ДОРАБОТАТЬ---------------------------------------------'''
-
-# edit_item = CallbackData('edit', 'item_id', 'action')
-#
-#
-# @dp.callback_query_handler(user_id=ADMINS, text='set_item')
-# async def set_item(call: types.CallbackQuery):
-#     await call.answer(cache_time=60)
-#
-#     all_items = await db.show_items()
-#     for item in all_items:
-#         text = f'Название: <b>{item.name}</b>\n\n' \
-#                f'Описание: <i>{item.description}</i>\n\n' \
-#                f'Цена: <b>{item.price:,} RUB</b>\n\n' \
-#                f'Фотография: {item.photo}\n\n'
-#
-#         set_item_keyboard = InlineKeyboardMarkup(row_width=1)
-#
-#         set_name_btn = InlineKeyboardButton(text='Изменить название', callback_data=edit_item.new(item_id=item.id,
-#                                                                                                   action='name'))
-#         set_desc_btn = InlineKeyboardButton(text='Изменить описание', callback_data=edit_item.new(item_id=item.id,
-#                                                                                                   action='desc'))
-#         set_price_btn = InlineKeyboardButton(text='Изменить цену', callback_data=edit_item.new(item_id=item.id,
-#                                                                                                action='price'))
-#         set_photo_btn = InlineKeyboardButton(text='Изменить фотографию', callback_data=edit_item.new(item_id=item.id,
-#                                                                                                      action='photo'))
-#         delete_item_btn = InlineKeyboardButton(text='Удалить товар', callback_data=edit_item.new(item_id=item.id,
-#                                                                                                  action='delete'))
-#
-#         set_item_keyboard.add(set_name_btn, set_desc_btn, set_price_btn, set_photo_btn, delete_item_btn)
-#
-#         await call.message.answer(text.format(id=item.id, name=item.name, price=item.price / 100),
-#                                   reply_markup=set_item_keyboard)
-#         await asyncio.sleep(0.3)
-#
-#
-# @dp.callback_query_handler(edit_item.filter(action='name'))
-# async def edit_item_name(call: CallbackQuery, callback_data: dict, state: FSMContext):
-#     await call.answer(cache_time=60)
-#     item_id = int(callback_data.get('item_id'))
-#     await call.message.answer('Вы хотите изменить название товара!')
-#     item = Item.get(item_id)
-#
-#     if not item:
-#         await call.message.answer('Такого товара не существует')
-#         return
-#     # await db.edit_name_item(item_id, 'new name')
-#     await call.message.answer('Введите новое название товара.')
-#     await call.message.edit_reply_markup()
-#     await EditItem.EditName.set()
-#
-#
-# @dp.message_handler(user_id=ADMINS, state=EditItem.EditName)
-# async def enter_new_name(message: types.Message):
-#     new_item_name = message.text
-#
-#
-# @dp.inline_handler(user_id=ADMINS)
-# async def edit_item_query(query: types.InlineQuery):
-#     all_items = await db.show_sorted_items(query.query or None)
-#
-#     articles = [types.InlineQueryResultArticle(
-#         id=item.id,
-#         title=item.name,
-#         description='Цена: {price:,} RUB'.format(price=item.price / 100),
-#         input_message_content=types.InputTextMessageContent(
-#             message_text=f'id: <b>{item.id}</b>\n\n'
-#                          f'Название: <b>{item.name}</b>\n\n'
-#                          f'Описание: <i>{item.description}</i>\n\n'
-#                          f'Цена: <b>{item.price:,} RUB</b>\n\n'
-#                          f'Фотография: {item.photo}\n\n',
-#             parse_mode='HTML'
-#         ),
-#         thumb_url=item.photo,
-#         reply_markup=keyboard_set_items) for item in all_items]
-#
-#     await query.answer(articles, cache_time=5, switch_pm_text='Выберите товар, который хотите изменить',
-#                        switch_pm_parameter='edit_item')
-#
-#     await EditItem.EditItem.set()
-#
-#
-# @dp.message_handler(CommandStart(deep_link='edit_item'), state=EditItem.EditItem)
-# async def enter_switch_btn(message: types.Message):
-#     await message.answer('Выберите товар из списка', reply_markup=InlineKeyboardMarkup(
-#         inline_keyboard=[
-#             [
-#                 InlineKeyboardButton(text='Выбрать товар', switch_inline_query_current_chat='')
-#             ]
-#         ]
-#     ))
-#
-#
-# @dp.message_handler(CommandStart(deep_link='edit_item'), state=EditItem.EditItem)
-# async def edit_item_msg(message: types.Message, state: FSMContext):
-#     text = message.text
-#     print(text)
-#     pattern = r'id: (\d+)'
-#     item_id = int(re.match(pattern, text).group(1))
-#     item = await db.get_item(item_id)
-#
-#     await state.update_data(item=item)
-#
-#
-# @dp.callback_query_handler(state=EditItem.EditItem, text='set_name')
-# async def enter_new_name(call: types.CallbackQuery, state: FSMContext):
-#     await call.answer(cache_time=60)
-#     await call.answer('Введите новое имя для товара')
-#
-#     await EditItem.EditName.set()
-#
-#
-# @dp.message_handler(state=EditItem.EditName)
-# async def set_item_name(message: types.Message, state: FSMContext):
-#     new_item_name = message.text
-#     data = await state.get_data()
-#     item = data.get('item')
-#     text = f'Old name: {item.name}\n' \
-#            f'New name: {new_item_name}'
-#     await message.answer(text)

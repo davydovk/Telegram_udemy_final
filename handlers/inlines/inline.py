@@ -50,7 +50,7 @@ async def empty_query(query: types.InlineQuery, state: FSMContext):
     all_items = await db.show_sorted_items(query.query or None)
 
     bot_username = (await query.bot.get_me()).username
-    bot_link = 'https://t.me/{bot_username}?start={item_id}'
+    bot_link = 'https://t.me/{bot_username}?start=i{item_id}'
     articles = [types.InlineQueryResultArticle(
         id=item.id,
         title=item.name,

@@ -10,7 +10,7 @@ from aiogram.utils.deep_linking import get_start_link
 
 from data.config import ADMINS
 from keyboards.inline.callbackdata_factory import buy_item
-from keyboards.inline.keyboards import keyboard_success_auth, keyboard_start_deep_link
+from keyboards.inline.keyboards import keyboard_success_auth, keyboard_start_deep_link, keyboard_admin
 from loader import dp
 from utils.db_api import db_commands, models
 
@@ -18,7 +18,7 @@ from utils.db_api import db_commands, models
 db = db_commands.DBCommands()
 
 
-# Ловим item_id в deep_link с помощью регулярного выражения
+# Ловим item_id товара в deep_link с помощью регулярного выражения
 @dp.message_handler(CommandStart(deep_link=re.compile(r'i(\d+)')))
 async def connect_user(message: types.Message, state: FSMContext):
     args = message.get_args()[1:]
@@ -50,11 +50,13 @@ async def connect_user(message: types.Message, state: FSMContext):
     ))
 
 
+# Ловим команду /start, если пользователь пришел по реферальной ссылке или без
 @dp.message_handler(CommandStart(deep_link=re.compile(r'u(\d+)')))
 @dp.message_handler(CommandStart())
 async def bot_start(message: types.Message):
     chat_id = message.from_user.id
     referrer = message.get_args()[1:]
+    # referrer = message.get_args()[1:]
     bot_username = (await message.bot.get_me()).username
     referral_id = message.from_user.id
     referral_link = f'https://t.me/{bot_username}?start=u{referral_id}'

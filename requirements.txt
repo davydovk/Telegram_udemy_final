@@ -10,5 +10,5 @@ py3dns
 validate_email
 pyqrcode
 pypng
-blockcypher
 -e git://github.com/Latand/blockcypher-python.git#egg=blockcypher
+qiwipy

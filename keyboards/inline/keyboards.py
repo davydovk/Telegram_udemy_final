@@ -49,23 +49,41 @@ show_items_btn = InlineKeyboardButton(text=f'{emojize(":magnifying_glass_tilted_
                                       switch_inline_query_current_chat='')
 share_ref_link_btn = InlineKeyboardButton(text=f'{emojize(":left_arrow_curving_right:")} Получить реферальную ссылку'
                                           , callback_data='share_ref_link')
+check_referrals_btn = InlineKeyboardButton(text=f'{emojize(":busts_in_silhouette:")} Показать рефералов',
+                                           callback_data='referrals')
 tell_everyone_btn = InlineKeyboardButton(text=f'{emojize(":envelope:")} Отправить сообщение пользователям',
                                          callback_data='tell_everyone')
+check_balance_btn = InlineKeyboardButton(text=f'{emojize(":money_bag:")} Проверить баланс', callback_data='balance')
 
-keyboard_admin.add(add_item_btn, set_item_btn, show_items_btn, tell_everyone_btn, share_ref_link_btn)
+keyboard_admin.add(add_item_btn, show_items_btn, tell_everyone_btn, check_balance_btn, check_referrals_btn,
+                   share_ref_link_btn)
 
 
 # Клавиатура для изменения товара
-set_item = CallbackData('set', 'item_id', 'action')
 keyboard_set_items = InlineKeyboardMarkup(row_width=1)
 
-set_name_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить название', callback_data='set_name')
-set_desc_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить описание', callback_data='set_desc')
-set_price_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить цену', callback_data='set_price')
-set_photo_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить фотографию', callback_data='set_photo')
-delete_item_btn = InlineKeyboardButton(text=f'{emojize(":wastebasket:")} Удалить товар', callback_data='delete_item')
+set_name_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить название',
+                                    callback_data='set:item_id:edit_name')
+set_desc_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить описание',
+                                    callback_data='set:item_id:edit_desc')
+set_price_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить цену',
+                                     callback_data='set:item_id:edit_price')
+set_photo_btn = InlineKeyboardButton(text=f'{emojize(":pencil:")} Изменить фотографию',
+                                     callback_data='set:item_id:edit_photo')
+delete_item_btn = InlineKeyboardButton(text=f'{emojize(":wastebasket:")} Удалить товар',
+                                       callback_data='set:item_id:delete_item')
 
 keyboard_set_items.add(set_name_btn, set_desc_btn, set_price_btn, set_photo_btn, delete_item_btn)
+
+
+# Клавиатура для подтверждения изменения товара
+keyboard_set_items_confirm = InlineKeyboardMarkup(row_width=1)
+
+confirm_set_btn = InlineKeyboardButton(text=f'{emojize(":check_mark_button:")} Подтверждаю',
+                                       callback_data='confirm_set')
+cancel_set_btn = InlineKeyboardButton(text=f'{emojize(":cross_mark:")} Отмена', callback_data='cancel_set')
+
+keyboard_set_items_confirm.add(confirm_set_btn, cancel_set_btn)
 
 
 # Клавиатура для подтверждения покупки

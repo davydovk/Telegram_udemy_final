@@ -15,6 +15,7 @@ class EditItem(StatesGroup):
     EditDesc = State()
     EditPhoto = State()
     EditPrice = State()
+    Delete = State()
 
 
 class Mailing(StatesGroup):
